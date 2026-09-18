@@ -12,8 +12,7 @@ st.write ('이 쿠키는 칙촉일까 촉촉한 초코칩 쿠키일까')
 문제를 풀면 쿠키가 구워집니다. 제한시간 안에 최대한 많은 쿠키를 모으세요!
 
 실행 방법:
-    pip install streamlit
-    (선택, 자동 타이머 갱신용) pip install streamlit-autorefresh
+    pip install streamlit streamlit-autorefresh
     streamlit run cookie_calculus_game.py
 """
 
@@ -23,9 +22,7 @@ from fractions import Fraction
 
 import streamlit as st
 
-# streamlit-autorefresh 가 설치되어 있으면 타이머가 1초마다 자동 갱신됩니다.
-# 설치되어 있지 않아도 게임은 정상 동작하며(정답 제출/버튼 클릭 시 타이머 갱신),
-# 더 부드러운 카운트다운을 원하면 pip install streamlit-autorefresh 를 해주세요.
+# streamlit-autorefresh 가 설치되어 있으면 타이머가 1초마다 자동으로 흘러갑니다.
 try:
     from streamlit_autorefresh import st_autorefresh
     HAS_AUTOREFRESH = True
@@ -101,7 +98,16 @@ PROBLEMS = [
      "answer": 18, "desc": "상수 a의 값을 구하시오."},
 ]
 
-TIME_OPTIONS = {"30초 (스피드런)": 30, "60초 (기본)": 60, "90초 (여유)": 90, "120초 (마라톤)": 120}
+# 제한시간 옵션 (초 단위)
+TIME_OPTIONS = {
+    "30초 (스피드런)": 30,
+    "60초 (기본)": 60,
+    "90초 (여유)": 90,
+    "120초 (넉넉)": 120,
+    "5분 (300초)": 300,
+    "7분 (420초)": 420,
+    "10분 (600초)": 600,
+}
 
 
 # ============================================================
@@ -127,6 +133,13 @@ def is_correct(user_text: str, answer: float) -> bool:
     if val is None:
         return False
     return abs(val - answer) < 0.01
+
+
+def format_time(seconds: float) -> str:
+    """초를 mm:ss 형식으로 변환."""
+    seconds = max(0, int(seconds))
+    m, s = divmod(seconds, 60)
+    return f"{m:02d}:{s:02d}"
 
 
 def pick_new_question():
@@ -177,17 +190,83 @@ def end_game():
         st.session_state.best_score = st.session_state.cookies
 
 
-def cookie_row(n: int) -> str:
-    """쿠키 개수를 이모지 문자열로. 너무 많으면 개수 표기로 축약."""
-    if n <= 60:
-        return "🍪" * n if n > 0 else "아직 없어요"
-    return f"🍪 x {n}"
+# ------------------------------------------------------------
+# 쿠키가 옆에 차곡차곡 쌓이는 비주얼 (HTML/CSS)
+# ------------------------------------------------------------
+COOKIE_JAR_CSS = """
+<style>
+.cookie-jar-box {
+    border: 3px dashed #d9a05b;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #fff8ec 0%, #ffe9c7 100%);
+    padding: 14px;
+    max-height: 380px;
+    overflow-y: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 4px;
+}
+.cookie-jar-box .cookie {
+    font-size: 26px;
+    line-height: 1;
+    display: inline-block;
+    filter: drop-shadow(0 2px 1px rgba(0,0,0,0.25));
+}
+.cookie-jar-box .cookie.newest {
+    animation: cookiePop 0.5s ease-out;
+}
+@keyframes cookiePop {
+    0%   { transform: scale(0) rotate(-30deg); opacity: 0; }
+    60%  { transform: scale(1.3) rotate(8deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+.cookie-jar-empty {
+    color: #b98449;
+    font-size: 15px;
+    padding: 8px;
+}
+.cookie-count-badge {
+    text-align: center;
+    font-weight: 700;
+    color: #8a5a20;
+    margin-top: 6px;
+}
+</style>
+"""
+
+
+def render_cookie_jar(n: int):
+    """쿠키 개수만큼 이모지를 쌓아서 보여준다. 마지막 쿠키에는 팝 애니메이션."""
+    st.markdown(COOKIE_JAR_CSS, unsafe_allow_html=True)
+    if n <= 0:
+        st.markdown(
+            '<div class="cookie-jar-box"><div class="cookie-jar-empty">'
+            "아직 구운 쿠키가 없어요. 문제를 풀어서 쿠키를 채워보세요! 🍪"
+            "</div></div>",
+            unsafe_allow_html=True,
+        )
+        return
+
+    # 너무 많으면 렌더링 부담을 줄이기 위해 최대 300개까지만 실제로 그리고 나머지는 숫자로 표시
+    MAX_RENDER = 300
+    render_count = min(n, MAX_RENDER)
+    cookies_html = "".join(
+        f'<span class="cookie{" newest" if i == render_count - 1 else ""}">🍪</span>'
+        for i in range(render_count)
+    )
+    st.markdown(f'<div class="cookie-jar-box">{cookies_html}</div>', unsafe_allow_html=True)
+    if n > MAX_RENDER:
+        st.markdown(
+            f'<div class="cookie-count-badge">+{n - MAX_RENDER}개 더 있어요! (총 {n}개)</div>',
+            unsafe_allow_html=True,
+        )
 
 
 # ============================================================
 # 3. 화면 구성
 # ============================================================
-st.set_page_config(page_title="미적분 쿠키타이쿤", page_icon="🍪", layout="centered")
+st.set_page_config(page_title="미적분 쿠키타이쿤", page_icon="🍪", layout="wide")
 init_state()
 
 st.title("🍪 미적분 쿠키타이쿤")
@@ -196,15 +275,25 @@ st.caption("함수의 극한 · 함수의 연속 · 미분계수와 도함수 �
 # ---------------- 게임 시작 전 ----------------
 if not st.session_state.started and not st.session_state.finished:
     st.subheader("게임 설정")
-    time_label = st.radio("제한 시간을 선택하세요", list(TIME_OPTIONS.keys()), index=1, horizontal=True)
+    time_label = st.radio(
+        "제한 시간을 선택하세요",
+        list(TIME_OPTIONS.keys()),
+        index=1,
+        horizontal=True,
+    )
     st.write(f"최고 기록: **{st.session_state.best_score}개** 🍪")
     st.markdown(
         "**규칙**\n"
         "- 랜덤으로 나오는 미적분 문제를 풀고 정답을 입력하세요.\n"
-        "- 정답을 맞히면 쿠키가 1개 구워지고, 다음 문제로 넘어갑니다.\n"
+        "- 정답을 맞히면 쿠키가 1개 구워지고, 옆 쿠키 항아리에 차곡차곡 쌓입니다.\n"
         "- 오답이면 쿠키는 늘지 않지만, 같은 문제를 계속 도전할 수 있어요.\n"
         "- 제한 시간 안에 최대한 많은 쿠키를 모으세요!"
     )
+    if not HAS_AUTOREFRESH:
+        st.warning(
+            "타이머가 실시간으로 흘러가려면 `pip install streamlit-autorefresh` 를 설치해주세요. "
+            "설치하지 않으면 정답 제출/버튼 클릭 시에만 타이머가 갱신됩니다."
+        )
     if st.button("🔥 오븐 예열하고 시작하기", type="primary", use_container_width=True):
         start_game(TIME_OPTIONS[time_label])
         st.rerun()
@@ -221,63 +310,82 @@ elif st.session_state.started:
         end_game()
         st.rerun()
 
-    # 상태 표시
-    col1, col2 = st.columns(2)
-    col1.metric("⏱️ 남은 시간", f"{max(0, int(remaining))}초")
-    col2.metric("🍪 구운 쿠키", f"{st.session_state.cookies}개")
-    st.progress(min(1.0, max(0.0, remaining / st.session_state.time_limit)))
+    progress_ratio = max(0.0, min(1.0, remaining / st.session_state.time_limit))
 
-    st.divider()
+    left_col, right_col = st.columns([2, 1])
 
-    problem = PROBLEMS[st.session_state.current]
-    st.markdown(f"**문제** — {problem['desc']}")
-    st.latex(problem["latex"])
+    with left_col:
+        # 상태 표시
+        c1, c2 = st.columns(2)
+        c1.metric("⏱️ 남은 시간", format_time(remaining))
+        c2.metric("🍪 구운 쿠키", f"{st.session_state.cookies}개")
 
-    if st.session_state.feedback:
-        if st.session_state.feedback_type == "success":
-            st.success(st.session_state.feedback)
-        elif st.session_state.feedback_type == "error":
-            st.error(st.session_state.feedback)
+        # 흘러가는 타이머 바 (남은 시간이 줄어들수록 색도 변함)
+        bar_color = "#4CAF50" if progress_ratio > 0.5 else ("#FFA726" if progress_ratio > 0.2 else "#E53935")
+        st.markdown(
+            f"""
+            <div style="background:#eee;border-radius:8px;overflow:hidden;height:18px;margin-bottom:14px;">
+                <div style="width:{progress_ratio*100:.2f}%;height:100%;background:{bar_color};
+                            transition: width 1s linear;"></div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-    with st.form(key=f"answer_form_{st.session_state.answer_box_key}", clear_on_submit=True):
-        user_answer = st.text_input("정답을 입력하세요 (예: 10, -5, 1/4)")
-        submitted = st.form_submit_button("✅ 정답 제출")
+        st.divider()
 
-    if submitted:
-        if is_correct(user_answer, problem["answer"]):
-            st.session_state.cookies += 1
-            st.session_state.feedback = "정답입니다! 쿠키가 하나 구워졌어요 🍪"
-            st.session_state.feedback_type = "success"
-            pick_new_question()
-            st.session_state.answer_box_key += 1
-            st.balloons()
-        else:
-            st.session_state.wrong_tries += 1
-            st.session_state.feedback = "아쉬워요, 오븐 온도가 안 맞았나 봐요. 다시 계산해보세요!"
-            st.session_state.feedback_type = "error"
-            st.session_state.answer_box_key += 1
-        st.rerun()
+        problem = PROBLEMS[st.session_state.current]
+        st.markdown(f"**문제** — {problem['desc']}")
+        st.latex(problem["latex"])
 
-    skip_col, refresh_col = st.columns(2)
-    with skip_col:
-        if st.button("🙈 이 문제 포기하고 다음 문제"):
-            pick_new_question()
-            st.session_state.feedback = ""
-            st.session_state.feedback_type = None
+        if st.session_state.feedback:
+            if st.session_state.feedback_type == "success":
+                st.success(st.session_state.feedback)
+            elif st.session_state.feedback_type == "error":
+                st.error(st.session_state.feedback)
+
+        with st.form(key=f"answer_form_{st.session_state.answer_box_key}", clear_on_submit=True):
+            user_answer = st.text_input("정답을 입력하세요 (예: 10, -5, 1/4)")
+            submitted = st.form_submit_button("✅ 정답 제출")
+
+        if submitted:
+            if is_correct(user_answer, problem["answer"]):
+                st.session_state.cookies += 1
+                st.session_state.feedback = "정답입니다! 쿠키가 하나 구워졌어요 🍪"
+                st.session_state.feedback_type = "success"
+                pick_new_question()
+                st.session_state.answer_box_key += 1
+            else:
+                st.session_state.wrong_tries += 1
+                st.session_state.feedback = "아쉬워요, 오븐 온도가 안 맞았나 봐요. 다시 계산해보세요!"
+                st.session_state.feedback_type = "error"
+                st.session_state.answer_box_key += 1
             st.rerun()
-    with refresh_col:
-        if not HAS_AUTOREFRESH:
-            if st.button("🔄 타이머 갱신"):
-                st.rerun()
 
-    if not HAS_AUTOREFRESH:
-        st.caption("💡 `pip install streamlit-autorefresh` 를 설치하면 타이머가 자동으로 갱신됩니다.")
+        skip_col, refresh_col = st.columns(2)
+        with skip_col:
+            if st.button("🙈 이 문제 포기하고 다음 문제"):
+                pick_new_question()
+                st.session_state.feedback = ""
+                st.session_state.feedback_type = None
+                st.rerun()
+        with refresh_col:
+            if not HAS_AUTOREFRESH:
+                if st.button("🔄 타이머 갱신"):
+                    st.rerun()
+
+        if not HAS_AUTOREFRESH:
+            st.caption("💡 `pip install streamlit-autorefresh` 를 설치하면 타이머가 자동으로 흘러갑니다.")
+
+    with right_col:
+        st.markdown("### 🏺 쿠키 항아리")
+        render_cookie_jar(st.session_state.cookies)
 
 # ---------------- 게임 종료 ----------------
 else:
     st.subheader("🎉 게임 종료!")
     st.markdown(f"## 총 **{st.session_state.cookies}개**의 쿠키를 구웠어요! 🍪")
-    st.write(cookie_row(st.session_state.cookies))
+    render_cookie_jar(st.session_state.cookies)
 
     if st.session_state.cookies >= st.session_state.best_score and st.session_state.cookies > 0:
         st.success("🏆 최고 기록 갱신!")
