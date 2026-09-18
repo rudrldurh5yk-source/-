@@ -12,7 +12,6 @@ st.write ('이 쿠키는 칙촉일까 촉촉한 초코칩 쿠키일까')
 접선의 방정식 등) 문제를 풀면 쿠키가 구워집니다.
 제한시간 안에 최대한 많은 쿠키를 모으세요!
 
-
 """
 
 import random
@@ -21,6 +20,12 @@ from fractions import Fraction
 
 import streamlit as st
 
+# streamlit-autorefresh 가 설치되어 있으면 타이머가 1초마다 자동으로 흘러갑니다.
+try:
+    from streamlit_autorefresh import st_autorefresh
+    HAS_AUTOREFRESH = True
+except ImportError:
+    HAS_AUTOREFRESH = False
 
 
 # ============================================================
