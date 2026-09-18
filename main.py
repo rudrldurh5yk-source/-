@@ -1,7 +1,7 @@
 import streamlit as st
 
-st.title ('미적분 중간고사 범위 게임')
-st.write ('hello streamlit')
+st.title ('미적분 중간고사를 뿌셔먹어보자')
+st.write ('미적분 쿠키 타이쿤')
 
 
 # -*- coding: utf-8 -*-
