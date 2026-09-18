@@ -6,14 +6,12 @@ st.write ('이 쿠키는 칙촉일까 촉촉한 초코칩 쿠키일까')
 
 # -*- coding: utf-8 -*-
 """
-🍪 미적분 쿠키타이쿤
+🍪 미적분 쿠키타이쿤 🍪
 ------------------------------------------------
 미래엔 미적분1 중간고사 범위(함수의 극한, 함수의 연속, 미분계수와 도함수)
 문제를 풀면 쿠키가 구워집니다. 제한시간 안에 최대한 많은 쿠키를 모으세요!
 
-실행 방법:
-    pip install streamlit streamlit-autorefresh
-    streamlit run cookie_calculus_game.py
+
 """
 
 import random
