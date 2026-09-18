@@ -396,5 +396,3 @@ else:
         st.session_state.finished = False
         st.rerun()
 
-
-   pip install streamlit-autorefresh
