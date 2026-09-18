@@ -1,6 +1,6 @@
 import streamlit as st
 
-st.title ('미적분 중간고사를 뿌셔먹어보자')
+st.title ('게임인 척하는 미적분')
 st.write ('이 쿠키는 칙촉일까 촉촉한 초코칩 쿠키일까')
 
 
