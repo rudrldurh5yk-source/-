@@ -1,7 +1,7 @@
 import streamlit as st
 
 st.title ('미적분 중간고사를 뿌셔먹어보자')
-st.write ('미적분 쿠키 타이쿤')
+st.write ('이 쿠키는 칙촉일까 촉촉한 초코칩 쿠키일까')
 
 
 # -*- coding: utf-8 -*-
