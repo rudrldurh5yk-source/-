@@ -12,7 +12,7 @@ st.write ('이 쿠키는 칙촉일까 촉촉한 초코칩 쿠키일까')
 접선의 방정식 등) 문제를 풀면 쿠키가 구워집니다.
 제한시간 안에 최대한 많은 쿠키를 모으세요!
 
-* 타이머는 실시간으로 흘러가지 않고, 문제를 제출하거나
+* 이 버전은 타이머가 실시간으로 흘러가지 않고, 문제를 제출하거나
   넘길 때(=화면이 다시 그려질 때)마다 남은 시간이 갱신되어 표시됩니다.
 
 실행 방법:
@@ -198,6 +198,8 @@ def init_state():
         "feedback_type": None,  # "success" / "error" / None
         "best_score": 0,
         "answer_box_key": 0,
+        "time_chosen": False,       # 시간 선택을 마쳤는지 여부
+        "chosen_time_label": "60초 (기본)",
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -445,28 +447,45 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ---------------- 게임 시작 전: 시간 선택 화면 ----------------
+# ---------------- 게임 시작 전: 1단계(시간 선택) → 2단계(놀이방법+시작) ----------------
 if not st.session_state.started and not st.session_state.finished:
-    st.subheader("⏰ 제한 시간을 선택해주세요")
-    time_label = st.radio(
-        "제한 시간을 골라주세요",
-        list(TIME_OPTIONS.keys()),
-        index=1,
-        horizontal=True,
-        label_visibility="collapsed",
-    )
-    st.write(f"🏆 최고 기록: **{st.session_state.best_score}개** 🍪")
-    st.markdown(
-        "**놀이 방법**\n"
-        "- 랜덤으로 나오는 말랑말랑 미적분 문제를 풀고 정답을 입력해요.\n"
-        "- 정답을 맞히면 쿠키가 1개 뿅! 하고 구워지고, 옆 쿠키 항아리에 차곡차곡 쌓여요.\n"
-        "- 틀려도 괜찮아요! 같은 문제를 계속 다시 풀어볼 수 있어요.\n"
-        "- 남은 시간은 문제를 제출하거나 넘길 때마다 위쪽에 갱신되어 표시돼요.\n"
-        "- 제한 시간 안에 최대한 많은 쿠키를 모아보세요! 🧁"
-    )
-    if st.button("🔥 오븐 예열하고 시작하기!", type="primary", use_container_width=True):
-        start_game(TIME_OPTIONS[time_label])
-        st.rerun()
+
+    if not st.session_state.time_chosen:
+        # 1단계: 제한 시간 선택만
+        st.subheader("⏰ 제한 시간을 선택해주세요")
+        time_label = st.radio(
+            "제한 시간을 골라주세요",
+            list(TIME_OPTIONS.keys()),
+            index=list(TIME_OPTIONS.keys()).index(st.session_state.chosen_time_label),
+            horizontal=True,
+            label_visibility="collapsed",
+        )
+        st.write(f"🏆 최고 기록: **{st.session_state.best_score}개** 🍪")
+        if st.button("➡️ 다음", type="primary", use_container_width=True):
+            st.session_state.chosen_time_label = time_label
+            st.session_state.time_chosen = True
+            st.rerun()
+
+    else:
+        # 2단계: 놀이 방법 안내 + 오븐 예열(게임 시작)
+        st.subheader("🧁 놀이 방법")
+        st.markdown(
+            f"⏰ 선택한 제한 시간: **{st.session_state.chosen_time_label}**\n\n"
+            "- 랜덤으로 나오는 말랑말랑 미적분 문제를 풀고 정답을 입력해요.\n"
+            "- 정답을 맞히면 쿠키가 1개 뿅! 하고 구워지고, 옆 쿠키 항아리에 차곡차곡 쌓여요.\n"
+            "- 틀려도 괜찮아요! 같은 문제를 계속 다시 풀어볼 수 있어요.\n"
+            "- 남은 시간은 문제를 제출하거나 넘길 때마다 위쪽에 갱신되어 표시돼요.\n"
+            "- 제한 시간 안에 최대한 많은 쿠키를 모아보세요! 🧁"
+        )
+        col_back, col_start = st.columns([1, 2])
+        with col_back:
+            if st.button("⬅️ 시간 다시 선택"):
+                st.session_state.time_chosen = False
+                st.rerun()
+        with col_start:
+            if st.button("🔥 오븐 예열하고 시작하기!", type="primary", use_container_width=True):
+                start_game(TIME_OPTIONS[st.session_state.chosen_time_label])
+                st.rerun()
 
 # ---------------- 게임 진행 중 ----------------
 elif st.session_state.started:
@@ -539,4 +558,5 @@ else:
     if st.button("🔁 다시 도전하기!", type="primary", use_container_width=True):
         st.session_state.started = False
         st.session_state.finished = False
+        st.session_state.time_chosen = False
         st.rerun()
