@@ -12,6 +12,12 @@ st.write ('이 쿠키는 칙촉일까 촉촉한 초코칩 쿠키일까')
 접선의 방정식 등) 문제를 풀면 쿠키가 구워집니다.
 제한시간 안에 최대한 많은 쿠키를 모으세요!
 
+* 이 버전은 타이머가 실시간으로 흘러가지 않고, 문제를 제출하거나
+  넘길 때(=화면이 다시 그려질 때)마다 남은 시간이 갱신되어 표시됩니다.
+
+실행 방법:
+    pip install streamlit
+    streamlit run cookie_calculus_game.py
 """
 
 import random
@@ -19,13 +25,6 @@ import time
 from fractions import Fraction
 
 import streamlit as st
-
-# streamlit-autorefresh 가 설치되어 있으면 타이머가 1초마다 자동으로 흘러갑니다.
-try:
-    from streamlit_autorefresh import st_autorefresh
-    HAS_AUTOREFRESH = True
-except ImportError:
-    HAS_AUTOREFRESH = False
 
 
 # ============================================================
@@ -313,27 +312,6 @@ div.stButton > button:active {
 .stat-label { font-size: 13px; color: #a9743f; font-weight: 700; margin-top: 2px; }
 .stat-value { font-size: 24px; color: #7a4a1a; font-weight: 800; }
 
-/* 타이머 바 */
-.timer-track {
-    position: relative;
-    background: #ffe4c4;
-    border-radius: 999px;
-    height: 26px;
-    margin: 14px 0 26px 0;
-}
-.timer-fill {
-    position: absolute;
-    left: 0; top: 0; height: 100%;
-    border-radius: 999px;
-    transition: width 1s linear, background 0.6s ease;
-}
-.timer-cookie {
-    position: absolute;
-    top: -8px;
-    font-size: 26px;
-    transition: left 1s linear;
-}
-
 /* 피드백 말풍선 */
 .cute-feedback {
     border-radius: 18px;
@@ -467,14 +445,15 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ---------------- 게임 시작 전 ----------------
+# ---------------- 게임 시작 전: 시간 선택 화면 ----------------
 if not st.session_state.started and not st.session_state.finished:
-    st.subheader("🍩 게임 설정")
+    st.subheader("⏰ 제한 시간을 선택해주세요")
     time_label = st.radio(
         "제한 시간을 골라주세요",
         list(TIME_OPTIONS.keys()),
         index=1,
         horizontal=True,
+        label_visibility="collapsed",
     )
     st.write(f"🏆 최고 기록: **{st.session_state.best_score}개** 🍪")
     st.markdown(
@@ -482,13 +461,9 @@ if not st.session_state.started and not st.session_state.finished:
         "- 랜덤으로 나오는 말랑말랑 미적분 문제를 풀고 정답을 입력해요.\n"
         "- 정답을 맞히면 쿠키가 1개 뿅! 하고 구워지고, 옆 쿠키 항아리에 차곡차곡 쌓여요.\n"
         "- 틀려도 괜찮아요! 같은 문제를 계속 다시 풀어볼 수 있어요.\n"
+        "- 남은 시간은 문제를 제출하거나 넘길 때마다 위쪽에 갱신되어 표시돼요.\n"
         "- 제한 시간 안에 최대한 많은 쿠키를 모아보세요! 🧁"
     )
-    if not HAS_AUTOREFRESH:
-        st.warning(
-            "타이머가 실시간으로 스르륵 흘러가려면 `pip install streamlit-autorefresh` 를 설치해주세요. "
-            "설치하지 않으면 정답 제출/버튼 클릭 시에만 타이머가 갱신돼요."
-        )
     if st.button("🔥 오븐 예열하고 시작하기!", type="primary", use_container_width=True):
         start_game(TIME_OPTIONS[time_label])
         st.rerun()
@@ -498,42 +473,19 @@ elif st.session_state.started:
     elapsed = time.time() - st.session_state.start_time
     remaining = st.session_state.time_limit - elapsed
 
-    if HAS_AUTOREFRESH and remaining > 0:
-        st_autorefresh(interval=1000, key="timer_refresh")
-
     if remaining <= 0:
         end_game()
         st.rerun()
 
-    progress_ratio = max(0.0, min(1.0, remaining / st.session_state.time_limit))
-
     left_col, right_col = st.columns([2, 1])
 
     with left_col:
-        # 귀여운 스탯 카드
+        # 남은 시간 / 구운 쿠키 표시 (문제가 넘어갈 때만 갱신됨)
         sc1, sc2 = st.columns(2)
         with sc1:
             st.markdown(stat_card("⏰", "남은 시간", format_time(remaining)), unsafe_allow_html=True)
         with sc2:
             st.markdown(stat_card("🍪", "구운 쿠키", f"{st.session_state.cookies}개"), unsafe_allow_html=True)
-
-        # 흘러가는 타이머 바 + 쿠키 마스코트
-        if progress_ratio > 0.5:
-            bar_gradient = "linear-gradient(90deg,#bdeab0,#7fd66a)"
-        elif progress_ratio > 0.2:
-            bar_gradient = "linear-gradient(90deg,#ffe1a8,#ffb95e)"
-        else:
-            bar_gradient = "linear-gradient(90deg,#ffb3ac,#ff7a6e)"
-        cookie_left = max(0.0, min(96.0, progress_ratio * 100 - 4))
-        st.markdown(
-            f"""
-            <div class="timer-track">
-                <div class="timer-fill" style="width:{progress_ratio*100:.2f}%;background:{bar_gradient};"></div>
-                <div class="timer-cookie" style="left:{cookie_left:.2f}%;">🍪</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
 
         st.divider()
 
@@ -562,20 +514,11 @@ elif st.session_state.started:
                 st.session_state.answer_box_key += 1
             st.rerun()
 
-        skip_col, refresh_col = st.columns(2)
-        with skip_col:
-            if st.button("🙈 이 문제는 다음에! 넘어가기"):
-                pick_new_question()
-                st.session_state.feedback = ""
-                st.session_state.feedback_type = None
-                st.rerun()
-        with refresh_col:
-            if not HAS_AUTOREFRESH:
-                if st.button("🔄 타이머 갱신"):
-                    st.rerun()
-
-        if not HAS_AUTOREFRESH:
-            st.caption("💡 `pip install streamlit-autorefresh` 를 설치하면 타이머가 자동으로 흘러가요.")
+        if st.button("🙈 이 문제는 다음에! 넘어가기"):
+            pick_new_question()
+            st.session_state.feedback = ""
+            st.session_state.feedback_type = None
+            st.rerun()
 
     with right_col:
         st.markdown("### 🫙 쿠키 항아리")
